@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36518.9 d17.14
+VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfApp1", "WpfApp1\WpfApp1.csproj", "{22D6B6C9-1CDC-4496-A9D4-0BD6E81E9CA9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wpf_MVVM_Read_Onnx", "Wpf_MVVM_Read_Onnx\Wpf_MVVM_Read_Onnx.csproj", "{C3C2006E-A1CF-44D1-B8A2-F8F6D1554EDF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wpf_MVVM_Read_Onnx_Using_Canvas", "Wpf_MVVM_Read_Onnx_Using_Canvas\Wpf_MVVM_Read_Onnx_Using_Canvas.csproj", "{711FD557-C0BE-4D28-A8DA-52562630962B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{22D6B6C9-1CDC-4496-A9D4-0BD6E81E9CA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{22D6B6C9-1CDC-4496-A9D4-0BD6E81E9CA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{22D6B6C9-1CDC-4496-A9D4-0BD6E81E9CA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3C2006E-A1CF-44D1-B8A2-F8F6D1554EDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3C2006E-A1CF-44D1-B8A2-F8F6D1554EDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3C2006E-A1CF-44D1-B8A2-F8F6D1554EDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3C2006E-A1CF-44D1-B8A2-F8F6D1554EDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{711FD557-C0BE-4D28-A8DA-52562630962B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{711FD557-C0BE-4D28-A8DA-52562630962B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{711FD557-C0BE-4D28-A8DA-52562630962B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{711FD557-C0BE-4D28-A8DA-52562630962B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,3 @@
+0 LimeStone
+1 Dolomite
+2 RedStone
