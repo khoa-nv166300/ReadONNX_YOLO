@@ -184,7 +184,8 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
             if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
             if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
 
-            await Task.Run(() => DetectOne(_imgPath, conf, iou, imgSz, CancellationToken.None));
+            await Task.Run(() => DetectOne(_imgPath, 0.25f, 0.45f, 640, CancellationToken.None));
+            //await Task.Run(() => DetectOne(_imgPath, conf, iou, imgSz, CancellationToken.None));
         }
         private async void OnTrigger()
         {
@@ -202,9 +203,9 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
                     if (!float.TryParse(ConfidenceThreshold, out float conf)) conf = 0.25f;
                     if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
                     if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
-                    await Task.Run(() => DetectOne(mat, conf, iou, imgSz, CancellationToken.None));
+                    DisplayedImageSource = mat.ToWriteableBitmap();
+                    await Task.Run(() => DetectOne(mat, 0.1f, 0.1f, 640, CancellationToken.None));
 
-                    //DisplayedImageSource = mat.ToWriteableBitmap();
                     StatusMessage = $"Trigger: {sw.ElapsedMilliseconds}ms";
                     CDefines.OnSequenceChanged(ESequence.Accepted);
                 }
@@ -283,17 +284,17 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
             if (_session == null) { StatusMessage = "Load ONNX trước."; return; }
             if (string.IsNullOrEmpty(_imgPath)) { StatusMessage = "Chọn ảnh trước."; return; }
 
-            if (!float.TryParse(ConfidenceThreshold, out float conf)) conf = 0.25f;
-            if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
-            if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
+            float conf = 0.25f;
+            float iou = 0.45f;
+            int imgSz = 640;
 
             Thread t1 = new Thread(() =>
             {
 
                 while (this.mat != null && bTrigger == false)
                 {
-                   
-                    Thread.Sleep(3);
+
+                    Thread.Sleep(5);
                     if (_cameraModel != null)
                     {
                         sw.Restart();
@@ -301,11 +302,11 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
 
                         if (mat != null)
                         {
-                            App.Current.Dispatcher.Invoke(new Action(() =>
+                            App.Current.Dispatcher.Invoke(new Action(async () =>
                             {
-                                //DisplayedImageSource = mat.ToWriteableBitmap();
-                                DetectOne(mat, conf, iou, imgSz, CancellationToken.None);
+                                DisplayedImageSource = mat.ToWriteableBitmap();
                             }));
+                            DetectOne(mat, conf, iou, imgSz, CancellationToken.None);
 
                             StatusMessage = $"Run: {sw.ElapsedMilliseconds}ms, {1.0 / sw.ElapsedMilliseconds * 1000:F0}fps";
                         }
@@ -362,7 +363,7 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
             int padW = letter.Item3, padH = letter.Item4;
 
             // 3) BGR->RGB, normalize 0..1, HWC->NCHW
-            Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
+            //Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
             var inputTensor = ToTensorUnsafeBGR(canvas);
 
             // 4) Prepare inputs/outputs
@@ -489,7 +490,7 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
                     // Update Image Source
                     try
                     {
-                        DisplayedImageSource = new BitmapImage(new Uri(imagePath));
+                        //DisplayedImageSource = new BitmapImage(new Uri(imagePath));
                     }
                     catch (Exception)
                     {
@@ -502,12 +503,13 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
                 StatusMessage = $"Detections: {finalDets.Count} - Tacttime: {sw.ElapsedMilliseconds}ms";
             }
         }
-        void DetectOne(Mat src, float confThres, float iouThres, int imgSize, CancellationToken token)
+        void DetectOne(Mat mat, float confThres, float iouThres, int imgSize, CancellationToken token)
         {
             if (token.IsCancellationRequested) return;
             sw.Restart();
             // 1) Read original with OpenCV
-
+            Mat src
+                  = mat.CvtColor(ColorConversionCodes.GRAY2BGR); // Chuyển ảnh xám sang BGR nếu cần
             if (src.Empty()) { StatusMessage = "Không đọc được ảnh."; return; }
             int origW = src.Width, origH = src.Height;
 
@@ -518,7 +520,7 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
             int padW = letter.Item3, padH = letter.Item4;
 
             // 3) BGR->RGB, normalize 0..1, HWC->NCHW
-            Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
+            //Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
             var inputTensor = ToTensorUnsafeBGR(canvas);
 
             // 4) Prepare inputs/outputs
@@ -536,7 +538,7 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
                 results = _session.Run(inputs);
                 var ms = (DateTime.Now - t0).TotalMilliseconds;
                 // Cập nhật trạng thái
-                StatusMessage = $"Inference time ~ {ms:0} ms";
+                //StatusMessage = $"Inference time ~ {ms:0} ms";
             }
             catch (Exception ex)
             {
@@ -655,7 +657,7 @@ namespace Wpf_MVVM_Read_Onnx.ViewModel
                     // Gọi Action đã được gắn từ View để vẽ lên Canvas
                     DrawOverlayAction?.Invoke(finalDets, origW, origH);
                 });
-                StatusMessage = $"Detections: {finalDets.Count} - Tacttime: {sw.ElapsedMilliseconds}ms";
+                //StatusMessage = $"Detections: {finalDets.Count} - Tacttime: {sw.ElapsedMilliseconds}ms";
             }
         }
         // ============= Helper Classes/Methods (Giữ lại hoặc chuyển Static) =============

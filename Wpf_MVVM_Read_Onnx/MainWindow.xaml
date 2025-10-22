@@ -78,7 +78,7 @@
             <Button Content="Trigger" Width="100" Margin="0,0,8,0" Command="{Binding TriggerCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
             <Button Content="Run" Width="100" Command="{Binding RunCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
             <CheckBox Content="GPU" Foreground="White" Margin="25,0,0,0" IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
-            
+
             <StackPanel Orientation="Horizontal" Margin="25,0,0,0" VerticalAlignment="Center">
                 <TextBlock Text="conf:" Foreground="White" Margin="0,0,4,0" VerticalAlignment="Center"/>
                 <TextBox Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
@@ -88,15 +88,16 @@
                 <TextBox Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
             </StackPanel>
         </StackPanel>
-
-        <Grid Grid.Row="1" Background="#2b2b2b" Margin="0,0,0,10">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Image Source="{Binding DisplayedImageSource}"/>
-                    <Canvas x:Name="Overlay" IsHitTestVisible="False"/>
-                </Grid>
-            </ScrollViewer>
-        </Grid>
+        <Viewbox Grid.Row="1">
+            <Grid Grid.Row="1" Background="#2b2b2b" Margin="0,0,0,10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Image Source="{Binding DisplayedImageSource}"/>
+                        <Canvas x:Name="Overlay" IsHitTestVisible="False"/>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Viewbox>
         <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0"
                 Text="{Binding StatusMessage}" />
     </Grid>

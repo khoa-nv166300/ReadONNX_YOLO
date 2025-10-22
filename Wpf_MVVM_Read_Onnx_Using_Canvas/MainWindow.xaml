@@ -8,154 +8,114 @@
         Title="YOLO ONNX WPF" Height="720" Width="1080" Background="#1e1e1e">
 
     <Window.Resources>
-        <Style TargetType="Button" x:Key="BaseButtonStyle">
-            <Setter Property="Background" Value="#3c3c3c"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="4" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#505050"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#2b2b2b"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
-        <Style TargetType="Button" x:Key="PrimaryButtonStyle" 
-               BasedOn="{StaticResource BaseButtonStyle}">
-            <Setter Property="Background" Value="#0078D4"/>
-        </Style>
-
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#2b2b2b"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="4" 
-                                Padding="8,0,8,0">
-                            <ScrollViewer x:Name="PART_ContentHost"/>
-                        </Border>
-                        
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <FontFamily x:Key="SymbolFont">Segoe MDL2 Assets</FontFamily>
     </Window.Resources>
 
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/> 
+            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
+                <Button Content="Load ONNX" Width="120" Margin="0,0,10,0" Command="{Binding LoadOnnxCommand}" Style="{StaticResource BaseButtonStyle}"/>
+                <Button Content="Load classes.txt" Width="140" Margin="0,0,10,0" Command="{Binding LoadNamesCommand}" Style="{StaticResource BaseButtonStyle}"/>
+                <Button Content="Open Image" Width="120" Margin="0,0,20,0" Command="{Binding OpenImageCommand}" Style="{StaticResource BaseButtonStyle}"/>
+                <Button Content="Detect" Width="100" Margin="0,0,8,0" Command="{Binding DetectCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Content="Run" Width="100" Command="{Binding RunCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
 
-            <Button Content="Load ONNX" Width="120" Margin="0,0,10,0" 
-                    Command="{Binding LoadOnnxCommand}"
-                    Style="{StaticResource BaseButtonStyle}">
-                <!--<Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE8DA;" FontFamily="{StaticResource SymbolFont}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Load ONNX"/>
-                    </StackPanel>
-                </Button.Content>-->
-            </Button>
+                <CheckBox Content="GPU" Foreground="White" Margin="25,0,0,0" IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
 
-            <Button Content="Load classes.txt" Width="140" Margin="0,0,10,0" 
-                    Command="{Binding LoadNamesCommand}" 
-                    Style="{StaticResource BaseButtonStyle}">
-                <!--<Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE8FE;" FontFamily="{StaticResource SymbolFont}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Load Names"/>
-                    </StackPanel>
-                </Button.Content>-->
-            </Button>
-
-            <Button Content="Open Image" Width="120" Margin="0,0,20,0" 
-                    Command="{Binding OpenImageCommand}"
-                    Style="{StaticResource BaseButtonStyle}">
-                <!--<Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xEB9F;" FontFamily="{StaticResource SymbolFont}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Open Image"/>
-                    </StackPanel>
-                </Button.Content>-->
-            </Button>
-
-            <Button Content="Detect" Width="100" Margin="0,0,8,0" 
-                    Command="{Binding DetectCommand}"
-                    Style="{StaticResource PrimaryButtonStyle}">
-                <!--<Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource SymbolFont}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Detect"/>
-                    </StackPanel>
-                </Button.Content>-->
-            </Button>
-
-            <Button Content="Run" Width="100" 
-                    Command="{Binding RunCommand}"
-                    Style="{StaticResource PrimaryButtonStyle}">
-                <!--<Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE768;" FontFamily="{StaticResource SymbolFont}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Run"/>
-                    </StackPanel>
-                </Button.Content>-->
-            </Button>
-
-            <CheckBox Content="GPU" Foreground="White" Margin="25,0,0,0"
-                      IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
-
-            <StackPanel Orientation="Horizontal" Margin="25,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="conf:" Foreground="White" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                <TextBox Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="50"/>
-
-                <TextBlock Text="iou:" Foreground="White" Margin="15,0,4,0" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding IouThreshold, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="50"/>
-
+                <StackPanel Orientation="Horizontal" Margin="25,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="conf:" Foreground="White" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                    <TextBlock Text="iou:" Foreground="White" Margin="15,0,4,0" VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding IouThreshold, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
                     <TextBlock Text="imgsz:" Foreground="White" Margin="15,0,4,0" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="50"/>
+                    <TextBox Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                </StackPanel>
+
             </StackPanel>
-
-        </StackPanel>
-
-        <Grid Grid.Row="1" Background="#2b2b2b" Margin="0,0,0,10">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Image Source="{Binding DisplayedImageSource}"/> 
-                    <Canvas x:Name="Overlay" IsHitTestVisible="False"/> 
-                </Grid>
-            </ScrollViewer>
         </Grid>
 
-        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0"
-                   Text="{Binding StatusMessage}" />
+        <Grid Grid.Row="1" Background="#2b2b2b" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0">
+                <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="2 2 1 2">
+                    <Viewbox Margin="2">
+                        <Grid>
+                            <Image Source="{Binding DisplayedImageSource}"/>
+                            <ItemsControl ItemsSource="{Binding OverlayDetections}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas IsHitTestVisible="False"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style>
+                                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+
+                                            <TextBlock Text="{Binding Label}" 
+                                                   Foreground="{Binding Color}" 
+                                                   Background="Transparent"
+                                                   FontWeight="SemiBold"/>
+
+                                            <Rectangle Width="{Binding Width}" 
+                                                   Height="{Binding Height}" 
+                                                   Stroke="{Binding Color}" 
+                                                   StrokeThickness="{Binding StrokeThickness}"
+                                                   Fill="Transparent"/>
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Viewbox>
+                </Border>
+            </Grid>
+            <Grid Grid.Column="1">
+                <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2">
+                    <ListBox ItemsSource="{Binding ItemSourceListData}" Background="Transparent" Style="{StaticResource RoundedListBox}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                             >
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock TextWrapping="Wrap" Margin="0">
+                                 <Run FontSize="10" 
+                                      FontWeight="SemiBold" 
+                                      Foreground="{DynamicResource ItemListboxBrush}" 
+                                      Text="{Binding DateTime, StringFormat='{}{0:[yyyy-MM-dd HH:mm:ss.fff]}'}">
+                                 </Run>
+                                 <LineBreak/>
+                                 <Run Text="{Binding Message}" 
+                                      Foreground="{Binding Color}"
+                                      FontSize="14">
+                                 </Run>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Grid>
+        </Grid>
+        <Grid Grid.Row="2">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding StatusMessage}" />
+                <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding ResultMessage}" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

@@ -1,116 +1,35 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Wpf_MVVM_Read_Onnx_Using_Canvas.Models;
 
 namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 {
-    public class MainViewModel : BaseViewModel
+    public partial class MainViewModel : BaseViewModel
     {
-        // ============= Fields/Properties cho Data Binding =============
-
-        private InferenceSession _session;
-        private List<string> _names = new List<string>();
-        private CancellationTokenSource _ctsAutoDetect;
-        private Stopwatch sw = new Stopwatch();
-
-        // Tương đương với các biến private trong code-behind
-        private string _onnxPath = "";
-        private string _imgPath = "";
-        private float[] _tensorBuf;
-        private int _bufLen;
-
-        private string _statusMessage = "";
-        public string StatusMessage
-        {
-            get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value);
-        }
-
-        private bool _isGpuEnabled = false;
-        public bool IsGpuEnabled
-        {
-            get => _isGpuEnabled;
-            set
-            {
-                if (SetProperty(ref _isGpuEnabled, value))
-                {
-                    // Tùy chọn: Tải lại session khi GPU thay đổi
-                    CreateSession();
-                }
-            }
-        }
-
-        private string _confidenceThreshold = "0.25";
-        public string ConfidenceThreshold
-        {
-            get => _confidenceThreshold;
-            set => SetProperty(ref _confidenceThreshold, value);
-        }
-
-        private string _iouThreshold = "0.45";
-        public string IouThreshold
-        {
-            get => _iouThreshold;
-            set => SetProperty(ref _iouThreshold, value);
-        }
-
-        private string _imageSize = "640";
-        public string ImageSize
-        {
-            get => _imageSize;
-            set => SetProperty(ref _imageSize, value);
-        }
-
-        private ImageSource _displayedImageSource;
-        public ImageSource DisplayedImageSource
-        {
-            get => _displayedImageSource;
-            set => SetProperty(ref _displayedImageSource, value);
-        }
-
-        private bool _isAutoRunning = false;
-        public bool IsAutoRunning
-        {
-            get => _isAutoRunning;
-            set => SetProperty(ref _isAutoRunning, value);
-        }
-
-        // Action delegate cho phép View xử lý việc vẽ lên Canvas (View-specific logic)
-        public Action<List<Det>, int, int> DrawOverlayAction { get; set; }
-
-        // ============= Commands =============
-
-        public ICommand LoadOnnxCommand { get; }
-        public ICommand LoadNamesCommand { get; }
-        public ICommand OpenImageCommand { get; }
-        public ICommand DetectCommand { get; }
-        public ICommand RunCommand { get; }
 
         public MainViewModel()
         {
-            // Khởi tạo Commands, sử dụng RelayCommand
             LoadOnnxCommand = new RelayCommand(p => LoadOnnx());
             LoadNamesCommand = new RelayCommand(p => LoadNames());
             OpenImageCommand = new RelayCommand(p => OpenImage());
-            DetectCommand = new RelayCommand(p => Detect());
-            RunCommand = new RelayCommand(p => RunToggle());
+            DetectCommand = new RelayCommand(p => { bAutoRun = false; Detect(); });
+            RunCommand = new RelayCommand(p => { bAutoRun = true; RunToggle(); });
 
-            // Tải các giá trị mặc định (nếu cần)
-            // ...
         }
-
-        // ============= Command Implementations =============
 
         private void LoadOnnx()
         {
@@ -141,7 +60,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 _imgPath = dlg.FileName;
                 try
                 {
-                    // Sử dụng UriSource để tránh giữ file lock
                     DisplayedImageSource = new BitmapImage(new Uri(_imgPath));
                 }
                 catch (Exception ex)
@@ -156,10 +74,12 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             if (_session == null) { StatusMessage = "Load ONNX trước."; return; }
             if (string.IsNullOrEmpty(_imgPath)) { StatusMessage = "Chọn ảnh trước."; return; }
 
-            // Chuyển việc parsing từ UI thread sang async
             if (!float.TryParse(ConfidenceThreshold, out float conf)) conf = 0.25f;
             if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
             if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
+
+            ItemSourceListData.Clear();
+            OverlayDetections.Clear();
 
             await Task.Run(() => DetectOne(_imgPath, conf, iou, imgSz, CancellationToken.None));
         }
@@ -168,7 +88,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
         {
             if (IsAutoRunning)
             {
-                // Stop
                 _ctsAutoDetect?.Cancel();
                 _ctsAutoDetect?.Dispose();
                 _ctsAutoDetect = null;
@@ -177,14 +96,12 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             }
             else
             {
-                // Start
                 if (_session == null) { StatusMessage = "Load ONNX trước."; return; }
 
                 if (!float.TryParse(ConfidenceThreshold, out float conf)) conf = 0.25f;
                 if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
                 if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
 
-                // Thay thế FolderPath cứng
                 string folderPath = @"C:\Users\khoa\Pictures\Data_LimeStone\raw\images";
                 if (!Directory.Exists(folderPath))
                 {
@@ -203,23 +120,28 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 IsAutoRunning = true;
                 StatusMessage = "Auto Detect started...";
 
-                // Bắt đầu luồng/Task nền
                 Task.Run(() =>
                 {
-                    while (!token.IsCancellationRequested)
+                    while (!token.IsCancellationRequested && bAutoRun)
                     {
+
                         foreach (var filePath in files)
                         {
+                            if(bAutoRun == false) break;
+                            Thread.Sleep(100);
+                            App.Current.Dispatcher.Invoke(() =>
+                            {
+                                ItemSourceListData.Clear();
+                                OverlayDetections.Clear();
+                            });
                             if (token.IsCancellationRequested) return;
                             DetectOne(filePath, conf, iou, imgSz, token);
-                            // Thread.Sleep(1000); // Bỏ comment nếu muốn có độ trễ
                         }
                     }
                 }, token);
             }
         }
 
-        // ============= Core Logic (Chuyển từ Code-behind) =============
 
         void CreateSession()
         {
@@ -245,23 +167,19 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
         {
             if (token.IsCancellationRequested) return;
             sw.Restart();
-            // 1) Read original with OpenCV
             Mat src = Cv2.ImRead(imagePath);
 
             if (src.Empty()) { StatusMessage = "Không đọc được ảnh."; return; }
             int origW = src.Width, origH = src.Height;
 
-            // 2) Letterbox
             var letter = Letterbox(src, imgSize, imgSize);
             Mat canvas = letter.Item1;
             float ratio = letter.Item2;
             int padW = letter.Item3, padH = letter.Item4;
 
-            // 3) BGR->RGB, normalize 0..1, HWC->NCHW
-            Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
+            //Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
             var inputTensor = ToTensorUnsafeBGR(canvas);
 
-            // 4) Prepare inputs/outputs
             string inputName = _session.InputMetadata.Keys.First();
             string outputName = _session.OutputMetadata.Keys.First();
 
@@ -275,7 +193,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 var t0 = DateTime.Now;
                 results = _session.Run(inputs);
                 var ms = (DateTime.Now - t0).TotalMilliseconds;
-                // Cập nhật trạng thái
                 StatusMessage = $"Inference time ~ {ms:0} ms";
             }
             catch (Exception ex)
@@ -306,9 +223,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 
                 int numClasses = Math.Max(1, numOutputs - 4);
 
-                // 5) Parse + filter by conf
-                var dets = new List<Det>();
-                // ... (Logic parsing/filtering tương tự như gốc)
+                var dets = new List<Detections>();
                 for (int i = 0; i < numBoxes; i++)
                 {
                     float cx, cy, w, h, bestScore = 0f; int bestClass = -1;
@@ -344,26 +259,22 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                     float x2 = cx + w / 2f;
                     float y2 = cy + h / 2f;
 
-                    // map back to original
                     float bx1 = Clamp(x1 - padW, 0, origW - 1) / ratio;
                     float by1 = Clamp(y1 - padH, 0, origH - 1) / ratio;
                     float bx2 = Clamp(x2 - padW, 0, origW - 1) / ratio;
                     float by2 = Clamp(y2 - padH, 0, origH - 1) / ratio;
 
-                    // Cần tính toán lại tọa độ sau khi clamp cho đúng, 
-                    // nhưng giữ lại logic tính toán gần giống code gốc:
                     bx1 = (x1 - padW) / ratio;
                     by1 = (y1 - padH) / ratio;
                     bx2 = (x2 - padW) / ratio;
                     by2 = (y2 - padH) / ratio;
 
-                    // Clamp
                     bx1 = Clamp(bx1, 0, origW - 1);
                     by1 = Clamp(by1, 0, origH - 1);
                     bx2 = Clamp(bx2, 0, origW - 1);
                     by2 = Clamp(by2, 0, origH - 1);
 
-                    dets.Add(new Det
+                    dets.Add(new Detections
                     {
                         X1 = bx1,
                         Y1 = by1,
@@ -375,53 +286,200 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                     });
                 }
 
-                // 6) NMS
                 var finalDets = NMS(dets, iouThres);
 
-                // 7) Show
-                // Sử dụng Dispatcher để hiển thị ảnh và gọi Action vẽ Overlay
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    // Update Image Source
                     try
                     {
                         DisplayedImageSource = new BitmapImage(new Uri(imagePath));
+                        finalDets.ForEach(d =>
+                        {
+                            ItemSourceListData.Add(new DetectionMessage(d.ToString(),
+                                (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red
+                                ));
+
+                            OverlayDetections.Add(new GraphicItem()
+                            {
+                                X = d.X1,
+                                Y = d.Y1,
+                                Width = Math.Abs(d.X1 - d.X2),
+                                Height = Math.Abs(d.Y1 - d.Y2),
+                                Color = (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red,
+                                StrokeThickness = 3,
+                                Fill = Brushes.Transparent,
+                            });
+
+                            OverlayDetections.Add(new TextBlockItem()
+                            {
+                                X = d.X1,
+                                Y = d.Y1 - 20,
+                                Color = (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red,
+                                Label = $" {d.ClassName} ({d.Score:P1})"
+                            });
+                        });
                     }
                     catch (Exception)
                     {
-                        // Bỏ qua lỗi load ảnh trong thread nền
                     }
 
-                    // Gọi Action đã được gắn từ View để vẽ lên Canvas
                     DrawOverlayAction?.Invoke(finalDets, origW, origH);
                 });
-                StatusMessage = $"Detections: {finalDets.Count} - Tacttime: {sw.ElapsedMilliseconds}ms";
+                ResultMessage = $"Detections: {finalDets.Count} ";
+            }
+        }
+        void DetectOne(Mat _mat, float confThres, float iouThres, int imgSize, CancellationToken token)
+        {
+            if (token.IsCancellationRequested) return;
+            sw.Restart();
+
+            Mat src = _mat.Clone();
+
+            if (src.Empty()) { StatusMessage = "Không đọc được ảnh."; return; }
+            int origW = src.Width, origH = src.Height;
+
+            var letter = Letterbox(src, imgSize, imgSize);
+            Mat canvas = letter.Item1;
+            float ratio = letter.Item2;
+            int padW = letter.Item3, padH = letter.Item4;
+
+            var inputTensor = ToTensorUnsafeBGR(canvas);
+
+            string inputName = _session.InputMetadata.Keys.First();
+            string outputName = _session.OutputMetadata.Keys.First();
+
+            var inputs = new List<NamedOnnxValue> {
+                NamedOnnxValue.CreateFromTensor(inputName, inputTensor)
+            };
+
+            IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
+            try
+            {
+                var t0 = DateTime.Now;
+                results = _session.Run(inputs);
+                var ms = (DateTime.Now - t0).TotalMilliseconds;
+                StatusMessage = $"Inference time ~ {ms:0} ms";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "ERR run: " + ex.Message;
+                results?.Dispose();
+                return;
+            }
+            if (token.IsCancellationRequested) return;
+
+            using (results)
+            {
+                var output = results.First(v => v.Name == outputName).AsTensor<float>();
+
+                float[] arr = output.ToArray();
+                int[] dims = output.Dimensions.ToArray();
+
+                int numBoxes, numOutputs; bool transposed;
+                if (dims.Length == 3)
+                {
+                    if (dims[1] < dims[2]) { numOutputs = dims[1]; numBoxes = dims[2]; transposed = false; }
+                    else { numBoxes = dims[1]; numOutputs = dims[2]; transposed = true; }
+                }
+                else
+                {
+                    return;
+                }
+
+                int numClasses = Math.Max(1, numOutputs - 4);
+
+                var dets = new List<Detections>();
+                for (int i = 0; i < numBoxes; i++)
+                {
+                    float cx, cy, w, h, bestScore = 0f; int bestClass = -1;
+
+                    if (!transposed)
+                    {
+                        cx = arr[0 * numBoxes + i];
+                        cy = arr[1 * numBoxes + i];
+                        w = arr[2 * numBoxes + i];
+                        h = arr[3 * numBoxes + i];
+
+                        for (int c = 0; c < numClasses; c++)
+                        {
+                            float s = arr[(4 + c) * numBoxes + i];
+                            if (s > bestScore) { bestScore = s; bestClass = c; }
+                        }
+                    }
+                    else
+                    {
+                        int b = i * numOutputs;
+                        cx = arr[b + 0]; cy = arr[b + 1]; w = arr[b + 2]; h = arr[b + 3];
+                        for (int c = 0; c < numClasses; c++)
+                        {
+                            float s = arr[b + 4 + c];
+                            if (s > bestScore) { bestScore = s; bestClass = c; }
+                        }
+                    }
+
+                    if (bestScore < confThres) continue;
+
+                    float x1 = cx - w / 2f;
+                    float y1 = cy - h / 2f;
+                    float x2 = cx + w / 2f;
+                    float y2 = cy + h / 2f;
+
+                    float bx1 = Clamp(x1 - padW, 0, origW - 1) / ratio;
+                    float by1 = Clamp(y1 - padH, 0, origH - 1) / ratio;
+                    float bx2 = Clamp(x2 - padW, 0, origW - 1) / ratio;
+                    float by2 = Clamp(y2 - padH, 0, origH - 1) / ratio;
+
+                    bx1 = (x1 - padW) / ratio;
+                    by1 = (y1 - padH) / ratio;
+                    bx2 = (x2 - padW) / ratio;
+                    by2 = (y2 - padH) / ratio;
+
+                    bx1 = Clamp(bx1, 0, origW - 1);
+                    by1 = Clamp(by1, 0, origH - 1);
+                    bx2 = Clamp(bx2, 0, origW - 1);
+                    by2 = Clamp(by2, 0, origH - 1);
+
+                    dets.Add(new Detections
+                    {
+                        X1 = bx1,
+                        Y1 = by1,
+                        X2 = bx2,
+                        Y2 = by2,
+                        ClassId = bestClass,
+                        Score = bestScore,
+                        ClassName = _names != null ? _names[bestClass] : "",
+                    });
+                }
+
+                var finalDets = NMS(dets, iouThres);
+
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        DisplayedImageSource = _mat.ToWriteableBitmap();
+                        finalDets.ForEach(d =>
+                        {
+                            ItemSourceListData.Add(new DetectionMessage(d.ToString(),
+                                (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red
+                                ));
+                        });
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    DrawOverlayAction?.Invoke(finalDets, origW, origH);
+                });
+                ResultMessage = $"Detections: {finalDets.Count} ";
             }
         }
 
-        // ============= Helper Classes/Methods (Giữ lại hoặc chuyển Static) =============
-
-        public class Det // Giữ lại public để có thể dùng trong DrawOverlayAction
-        {
-            public float X1, Y1, X2, Y2;
-            public int ClassId;
-            public float Score;
-            public string ClassName;
-        }
-
-        private static float Clamp(float v, float min, float max)
+        private  float Clamp(float v, float min, float max)
             => v < min ? min : (v > max ? max : v);
 
-        // ... (Các methods tĩnh khác như Letterbox, ToTensorUnsafeBGR, IoU, NMS)
-        // ... (Cần copy các methods này từ MainWindow.xaml.cs sang MainWindowViewModel.cs)
-        // Vì lý do giới hạn ký tự và lặp code, tôi sẽ bỏ qua việc copy chi tiết
-        // các methods helper (Letterbox, ToTensorUnsafeBGR, IoU, NMS) nhưng chúng 
-        // PHẢI được copy đầy đủ vào MainWindowViewModel.cs hoặc một lớp tĩnh Helper.
-
-        // Ví dụ:
         private unsafe DenseTensor<float> ToTensorUnsafeBGR(Mat bgr)
         {
-            // ... (Code ToTensorUnsafeBGR từ MainWindow.xaml.cs)
             if (bgr.Empty()) throw new ArgumentException("Mat rỗng");
             if (bgr.Type() != MatType.CV_8UC3)
                 throw new ArgumentException("Yêu cầu CV_8UC3 (3 kênh, 8-bit)");
@@ -461,9 +519,8 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return new DenseTensor<float>(_tensorBuf, new[] { 1, 3, h, w });
         }
 
-        private static Tuple<Mat, float, int, int> Letterbox(Mat src, int targetW, int targetH)
+        private  Tuple<Mat, float, int, int> Letterbox(Mat src, int targetW, int targetH)
         {
-            // ... (Code Letterbox từ MainWindow.xaml.cs)
             int w = src.Width, h = src.Height;
             float r = Math.Min((float)targetW / w, (float)targetH / h);
             int newW = (int)Math.Round(w * r);
@@ -481,9 +538,8 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return Tuple.Create(outImg, r, padW, padH);
         }
 
-        private static float IoU(Det a, Det b)
+        private  float IoU(Detections a, Detections b)
         {
-            // ... (Code IoU từ MainWindow.xaml.cs)
             float x1 = Math.Max(a.X1, b.X1);
             float y1 = Math.Max(a.Y1, b.Y1);
             float x2 = Math.Min(a.X2, b.X2);
@@ -495,10 +551,9 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return inter / union;
         }
 
-        private static List<Det> NMS(List<Det> dets, float iouThres)
+        private  List<Detections> NMS(List<Detections> dets, float iouThres)
         {
-            // ... (Code NMS từ MainWindow.xaml.cs)
-            var res = new List<Det>();
+            var res = new List<Detections>();
             var sorted = dets.OrderByDescending(d => d.Score).ToList();
             var removed = new bool[sorted.Count];
 
