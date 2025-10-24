@@ -90,7 +90,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Devices\CameraInfo.cs" />
     <Compile Include="Devices\HIKCamera.cs" />
+    <Compile Include="Devices\ICameraService.cs" />
     <Compile Include="Devices\MVCamera.cs" />
     <Compile Include="Models\DetectionMessage.cs" />
     <Compile Include="Models\Detections.cs" />

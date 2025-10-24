@@ -22,22 +22,40 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return true;
         }
     }
+    //public class RelayCommand : ICommand
+    //{
+    //    private readonly Action<object> _execute;
+    //    private readonly Predicate<object> _canExecute;
+
+    //    public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+    //    {
+    //        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+    //        _canExecute = canExecute;
+    //    }
+
+    //    public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
+
+    //    public void Execute(object parameter) => _execute(parameter);
+
+    //    public event EventHandler CanExecuteChanged;
+    //    public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
+    //}
     public class RelayCommand : ICommand
     {
-        private readonly Action<object> _execute;
-        private readonly Predicate<object> _canExecute;
-
-        public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+        private readonly Action _execute;
+        private readonly Func<bool> _can;
+        public RelayCommand(Action execute, Func<bool> can = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
+            _can = can;
         }
-
-        public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
-
-        public void Execute(object parameter) => _execute(parameter);
-
-        public event EventHandler CanExecuteChanged;
-        public void RaiseCanExecuteChanged() => CanExecuteChanged.Invoke(this, EventArgs.Empty);
+        public bool CanExecute(object p) => _can?.Invoke() ?? true;
+        public void Execute(object p) => _execute();
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+        public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
     }
 }

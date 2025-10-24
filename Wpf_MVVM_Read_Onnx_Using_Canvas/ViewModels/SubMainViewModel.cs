@@ -1,4 +1,5 @@
 ﻿using Microsoft.ML.OnnxRuntime;
+using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,13 +10,23 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using Wpf_MVVM_Read_Onnx_Using_Canvas.Devices;
 using Wpf_MVVM_Read_Onnx_Using_Canvas.Models;
 
 namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 {
     public partial class MainViewModel : BaseViewModel
     {
+        private readonly HikCameraService _cam = new HikCameraService();
+        public ObservableCollection<CameraInfo> CameraList { get; set; } = new ObservableCollection<CameraInfo>();
+        private CameraInfo _selectedCamera;
+        public CameraInfo SelectedCamera
+        {
+            get => _selectedCamera;
+            set { _selectedCamera = value; OnPropertyChanged(); }
+        }
 
+        private Mat mat;
         private InferenceSession _session;
         private List<string> _names = new List<string>();
         private CancellationTokenSource _ctsAutoDetect;
@@ -36,6 +47,12 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
         }
 
 
+        private string _totalTimeMessage = "";
+        public string TotalTimeMessage
+        {
+            get => _totalTimeMessage;
+            set => SetProperty(ref _totalTimeMessage, value);
+        }
         private string _statusMessage = "";
         public string StatusMessage
         {
@@ -91,7 +108,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             set => SetProperty(ref _isAutoRunning, value);
         }
 
-        public Action<List<Detections>, int, int> DrawOverlayAction { get; set; }
+        public Action ClosingAction { get; set; }
         private ObservableCollection<DetectionMessage> _temSourceListData = new ObservableCollection<DetectionMessage>();
 
         public ObservableCollection<DetectionMessage> ItemSourceListData
@@ -106,11 +123,29 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             get { return _overlayDetections; }
             set { _overlayDetections = value; OnPropertyChanged(); }
         }
+        private CameraState _state = CameraState.Disconnected;
+        public CameraState State
+        {
+            get => _state;
+            private set { _state = value; OnPropertyChanged(nameof(State)); RaiseAllCanExecutes(); }
+        }
 
+        private bool _isBusy; 
+        public bool IsBusy
+        {
+            get => _isBusy;
+            private set { _isBusy = value; OnPropertyChanged(nameof(IsBusy)); RaiseAllCanExecutes(); }
+        }
+        public RelayCommand  EnumCommand  { get; }
+        public RelayCommand  OpenCommand  { get; }
+        public RelayCommand  StartCommand  { get; }
+        public RelayCommand  StopCommand  { get; }
+        public RelayCommand DisconnectCommand { get; }
         public ICommand LoadOnnxCommand { get; }
         public ICommand LoadNamesCommand { get; }
         public ICommand OpenImageCommand { get; }
         public ICommand DetectCommand { get; }
+        public ICommand DetectCameraCommand { get; }
         public ICommand RunCommand { get; }
     }
 }

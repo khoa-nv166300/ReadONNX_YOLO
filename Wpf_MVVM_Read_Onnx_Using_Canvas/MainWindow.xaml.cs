@@ -19,17 +19,21 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : System.Windows.Window
     {
-        private MainViewModel _viewModel;
-
+        MainViewModel MainViewModel { get; set; }
         public MainWindow()
         {
             InitializeComponent();
+            MainViewModel = new MainViewModel();
+            this.DataContext = MainViewModel;
 
-            // 1. Khởi tạo ViewModel và thiết lập DataContext
-            _viewModel = new MainViewModel();
-            this.DataContext = _viewModel;
+        }
+
+        protected override void OnClosed(System.EventArgs e)
+        {
+            MainViewModel.ClosingAction?.Invoke();
+            base.OnClosed(e);
         }
     }
 }

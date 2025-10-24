@@ -5,114 +5,186 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Wpf_MVVM_Read_Onnx_Using_Canvas"
         mc:Ignorable="d"
-        Title="YOLO ONNX WPF" Height="720" Width="1080" Background="#1e1e1e">
-
-
-    <Grid Margin="15">
+           Title="YOLO ONNX WPF" Height="800" Width="1200" Background="#1e1e1e">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="3*"/>
+                        <RowDefinition Height="5*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="2 2 2 1" CornerRadius="3">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Top" >
+                                <Label Content="Cấu hình Camera" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
 
-                <Button Content="Load ONNX" Width="120" Margin="0,0,10,0" Command="{Binding LoadOnnxCommand}" Style="{StaticResource BaseButtonStyle}"/>
-                <Button Content="Load classes.txt" Width="140" Margin="0,0,10,0" Command="{Binding LoadNamesCommand}" Style="{StaticResource BaseButtonStyle}"/>
-                <Button Content="Open Image" Width="120" Margin="0,0,20,0" Command="{Binding OpenImageCommand}" Style="{StaticResource BaseButtonStyle}"/>
-                <Button Content="Detect" Width="100" Margin="0,0,8,0" Command="{Binding DetectCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
-                <Button Content="Run" Width="100" Command="{Binding RunCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
+                                <ComboBox ItemsSource="{Binding CameraList}" Style="{DynamicResource RoundedComboBox}" SelectedItem="{Binding SelectedCamera}" DisplayMemberPath="Name" Height="28"/>
 
-                <CheckBox Content="GPU" Foreground="White" Margin="25,0,0,0" IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
+                                <UniformGrid Columns="2">
+                                    <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding State}" />
+                                    <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding IsBusy}" />
+                                    <Button Margin="3" Style="{StaticResource BaseButtonStyle}"    Content="Quét thiết bị" Command="{Binding  EnumCommand }"  />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Kết nối"       Command="{Binding  OpenCommand }"  />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Bắt đầu"       Command="{Binding  StartCommand}"  />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Dừng"          Command="{Binding  StopCommand }"  />
+                                </UniformGrid>
+                                <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Ngắt kết nối"          Command="{Binding  StopCommand }"  />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2" CornerRadius="3">
+                            <StackPanel Orientation="Vertical" VerticalAlignment="Top">
+                                <Label Content="Cấu hình Detect Yolo" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
 
-                <StackPanel Orientation="Horizontal" Margin="25,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="conf:" Foreground="White" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                    <TextBlock Text="iou:" Foreground="White" Margin="15,0,4,0" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding IouThreshold, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                    <TextBlock Text="imgsz:" Foreground="White" Margin="15,0,4,0" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                </StackPanel>
+                                <UniformGrid Columns="2">
+                                    <UniformGrid Columns="1">
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Load ONNX"  Command="{Binding LoadOnnxCommand}"  />
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Load Name"  Command="{Binding LoadNamesCommand}" />
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Open Image" Command="{Binding OpenImageCommand}" />
+                                    </UniformGrid>
+                                    <UniformGrid Columns="1">
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Detect Image"  Command="{Binding DetectCommand}"       />
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Detect Camera" Command="{Binding DetectCameraCommand}" />
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Run"           Command="{Binding RunCommand}"          />
+                                    </UniformGrid>
+                                </UniformGrid>
 
-            </StackPanel>
-        </Grid>
+                                <CheckBox Content="GPU" Foreground="White" Margin="0,5,0,0" IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
 
-        <Grid Grid.Row="1" Background="#2b2b2b" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="300"/>
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="0">
-                <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="2 2 1 2">
-                    <Viewbox Margin="2">
+                                <StackPanel Orientation="Vertical" Margin="0,5,0,0" VerticalAlignment="Center">
+                                    <UniformGrid Columns="2">
+                                        <UniformGrid Columns="1">
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="Confidence:"/>
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="IoU:"       />
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="Image size:"/>
+                                        </UniformGrid>
+                                        <UniformGrid Columns="1">
+                                            <TextBox Margin="0,5,0,0" Width="120" Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Margin="0,5,0,0" Width="120" Text="{Binding IouThreshold, UpdateSourceTrigger=PropertyChanged}"        />
+                                            <TextBox Margin="0,5,0,0" Width="120" Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}"           />
+                                        </UniformGrid>
+                                    </UniformGrid>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="2">
+                    </Grid>
+                </Grid>
+                <Grid Grid.Column="1">
+                    <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="2 2 1 2">
                         <Grid>
-                            <Image Source="{Binding DisplayedImageSource}"/>
-                            <ItemsControl ItemsSource="{Binding OverlayDetections}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <Canvas IsHitTestVisible="False"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemContainerStyle>
-                                    <Style>
-                                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                                    </Style>
-                                </ItemsControl.ItemContainerStyle>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Label Content="TRACKING DETECT YOLO" FontSize="30" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"
+                           HorizontalContentAlignment="Center"
+                           VerticalContentAlignment="Center"
+                           />
+                            </Grid>
+                            <Grid Grid.Row="1">
+                                <Viewbox Margin="2">
+                                    <Grid>
+                                        <Image Source="{Binding DisplayedImageSource}"/>
+                                        <ItemsControl ItemsSource="{Binding OverlayDetections}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas IsHitTestVisible="False"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style>
+                                                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Label}" 
+                                            Foreground="{Binding Color}" 
+                                            Background="Transparent"
+                                            FontWeight="SemiBold"/>
 
-                                            <TextBlock Text="{Binding Label}" 
-                                                   Foreground="{Binding Color}" 
-                                                   Background="Transparent"
-                                                   FontWeight="SemiBold"/>
+                                                        <Rectangle Width="{Binding Width}" 
+                                            Height="{Binding Height}" 
+                                            Stroke="{Binding Color}" 
+                                            StrokeThickness="{Binding StrokeThickness}"
+                                            Fill="Transparent"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Viewbox>
+                            </Grid>
+                            <Grid Grid.Row="2">
+                                <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="2 2 2 2" CornerRadius="3">
+                                    <StackPanel Orientation="Vertical">
 
-                                            <Rectangle Width="{Binding Width}" 
-                                                   Height="{Binding Height}" 
-                                                   Stroke="{Binding Color}" 
-                                                   StrokeThickness="{Binding StrokeThickness}"
-                                                   Fill="Transparent"/>
-
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding StatusMessage}" />
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding ResultMessage}" />
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding TotalTimeMessage}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
                         </Grid>
-                    </Viewbox>
-                </Border>
+                    </Border>
+                </Grid>
+                <Grid Grid.Column="2">
+                    <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Label Content="List Result" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                            />
+                            </Grid>
+                            <Grid Grid.Row="1">
+
+                                <ListBox ItemsSource="{Binding ItemSourceListData}" Background="Transparent" Style="{StaticResource RoundedListBox}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                                 ScrollViewer.VerticalScrollBarVisibility="Hidden">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0">
+                                                       <Run FontSize="10" 
+                                                            FontWeight="SemiBold" 
+                                                            Foreground="{DynamicResource ItemListboxBrush}" 
+                                                            Text="{Binding DateTime, StringFormat='{}{0:[yyyy-MM-dd HH:mm:ss.fff]}'}">
+                                                       </Run>
+                                                       <LineBreak/>
+                                                       <Run Text="{Binding Message}" 
+                                                            Foreground="{Binding Color}"
+                                                            FontSize="14">
+                                                       </Run>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
             </Grid>
-            <Grid Grid.Column="1">
-                <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2">
-                    <ListBox ItemsSource="{Binding ItemSourceListData}" Background="Transparent" Style="{StaticResource RoundedListBox}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
-                             >
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock TextWrapping="Wrap" Margin="0">
-                                 <Run FontSize="10" 
-                                      FontWeight="SemiBold" 
-                                      Foreground="{DynamicResource ItemListboxBrush}" 
-                                      Text="{Binding DateTime, StringFormat='{}{0:[yyyy-MM-dd HH:mm:ss.fff]}'}">
-                                 </Run>
-                                 <LineBreak/>
-                                 <Run Text="{Binding Message}" 
-                                      Foreground="{Binding Color}"
-                                      FontSize="14">
-                                 </Run>
-                                </TextBlock>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
-            </Grid>
-        </Grid>
-        <Grid Grid.Row="2" Background="{StaticResource MainBrush}">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding StatusMessage}" />
-                <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding ResultMessage}" />
-            </StackPanel>
         </Grid>
     </Grid>
 </Window>

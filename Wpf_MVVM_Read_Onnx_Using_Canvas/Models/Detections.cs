@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media;
 
 namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Models
 {
@@ -11,6 +12,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Models
         public int ClassId;
         public float Score;
         public string ClassName;
+        public Brush ColorBox;
         override public string ToString()
         {
             return $"{ClassName} ({Score:P1}) [{X1:N0}, {Y1:N0}, {X2:N0}, {Y2:N0}]";

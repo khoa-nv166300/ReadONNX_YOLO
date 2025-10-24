@@ -20,15 +20,109 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 {
     public partial class MainViewModel : BaseViewModel
     {
-
+        public enum CameraState
+        {
+            Disconnected,
+            Connecting,
+            Connected,
+            Grabbing
+        }
+        private void RaiseAllCanExecutes()
+        {
+            OpenCommand.RaiseCanExecuteChanged();
+            StartCommand.RaiseCanExecuteChanged();
+            StopCommand.RaiseCanExecuteChanged();
+            DisconnectCommand.RaiseCanExecuteChanged();
+        }
+        private bool CanConnect() => State == CameraState.Disconnected && !IsBusy;
+        private bool CanStart() => State == CameraState.Connected && !IsBusy;
+        private bool CanStop() => State == CameraState.Grabbing && !IsBusy;
+        private bool CanDisconnect() => (State == CameraState.Connected || State == CameraState.Grabbing) && !IsBusy;
+        private async void Disconnect()
+        {
+            try
+            {
+                IsBusy = true;
+                if (State == CameraState.Grabbing) await Task.Run(() => Stop());
+                await Task.Delay(120);
+                State = CameraState.Disconnected;
+            }
+            finally { IsBusy = false; }
+        }
+        private async void Stop()
+        {
+            try
+            {
+                IsBusy = true;
+                await Task.Run(() => _cam.Stop());
+                State = CameraState.Connected;
+            }
+            finally { IsBusy = false; }
+        }
+        private async void Start()
+        {
+            try
+            {
+                IsBusy = true;
+                await Task.Run(() => _cam.Start());
+                State = CameraState.Grabbing;
+            }
+            finally { IsBusy = false; }
+        }
+        private async void Connect()
+        {
+            try
+            {
+                IsBusy = true;
+                State = CameraState.Connecting;
+                await Task.Run(() => Open());
+                State = CameraState.Connected;
+            }
+            catch
+            {
+                State = CameraState.Disconnected;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
         public MainViewModel()
         {
-            LoadOnnxCommand = new RelayCommand(p => LoadOnnx());
-            LoadNamesCommand = new RelayCommand(p => LoadNames());
-            OpenImageCommand = new RelayCommand(p => OpenImage());
-            DetectCommand = new RelayCommand(p => { bAutoRun = false; Detect(); });
-            RunCommand = new RelayCommand(p => { bAutoRun = true; RunToggle(); });
+            EnumCommand = new RelayCommand(Enumerate);
+            OpenCommand = new RelayCommand(Connect, CanConnect);
+            StartCommand = new RelayCommand(Start, CanStart);
+            StopCommand = new RelayCommand(Stop, CanStop);
+            DisconnectCommand = new RelayCommand(Disconnect, CanDisconnect);
 
+            _cam.FrameReceived += OnFrame;
+
+            LoadOnnxCommand = new RelayCommand(LoadOnnx);
+            LoadNamesCommand = new RelayCommand(LoadNames);
+            OpenImageCommand = new RelayCommand(OpenImage);
+            DetectCommand = new RelayCommand(() => { bAutoRun = false; Detect(); });
+            DetectCameraCommand = new RelayCommand(() => { bAutoRun = false; DetectCamera(); });
+            RunCommand = new RelayCommand(() => { bAutoRun = true; RunToggle(); });
+
+            this.ClosingAction += () => OnDispose();
+        }
+
+        private void Enumerate()
+        {
+            _cam.Enumerate();
+            CameraList.Clear();
+            foreach (var c in _cam.CameraList) CameraList.Add(c);
+            if (CameraList.Count > 0) SelectedCamera = CameraList[0];
+        }
+
+        private void Open()
+        {
+            if (SelectedCamera != null) _cam.Open(SelectedCamera);
+        }
+
+        private void OnFrame(BitmapSource frame)
+        {
+            DisplayedImageSource = frame;
         }
 
         private void LoadOnnx()
@@ -84,6 +178,21 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             await Task.Run(() => DetectOne(_imgPath, conf, iou, imgSz, CancellationToken.None));
         }
 
+        private async void DetectCamera()
+        {
+            if (_session == null) { StatusMessage = "Load ONNX trước."; return; }
+            if (_cam.mat == null) { StatusMessage = "Không có ảnh từ Camera"; return; }
+
+            if (!float.TryParse(ConfidenceThreshold, out float conf)) conf = 0.25f;
+            if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
+            if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
+
+            ItemSourceListData.Clear();
+            OverlayDetections.Clear();
+            this.mat = _cam.mat;
+            await Task.Run(() => DetectOne(this.mat, conf, iou, imgSz, CancellationToken.None));
+        }
+
         private void RunToggle()
         {
             if (IsAutoRunning)
@@ -102,19 +211,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 if (!float.TryParse(IouThreshold, out float iou)) iou = 0.45f;
                 if (!int.TryParse(ImageSize, out int imgSz)) imgSz = 640;
 
-                string folderPath = @"C:\Users\khoa\Pictures\Data_LimeStone\raw\images";
-                if (!Directory.Exists(folderPath))
-                {
-                    StatusMessage = "ERR: Thư mục ảnh không tồn tại: " + folderPath;
-                    return;
-                }
-                var files = Directory.GetFiles(folderPath).ToList();
-                if (!files.Any())
-                {
-                    StatusMessage = "ERR: Thư mục không có ảnh.";
-                    return;
-                }
-
                 _ctsAutoDetect = new CancellationTokenSource();
                 CancellationToken token = _ctsAutoDetect.Token;
                 IsAutoRunning = true;
@@ -124,24 +220,24 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 {
                     while (!token.IsCancellationRequested && bAutoRun)
                     {
+                        var t0 = DateTime.Now;
+                        //Thread.Sleep(5);
+                        if (bAutoRun == false) break;
+                        if (_cam.mat == null) break;
+                        if (token.IsCancellationRequested) return;
 
-                        foreach (var filePath in files)
+                        this.mat = _cam.mat;
+
+                        DetectOne(this.mat, conf, iou, imgSz, token);
+                        var ms = (DateTime.Now - t0).TotalMilliseconds;
+                        App.Current.Dispatcher.Invoke(() =>
                         {
-                            if(bAutoRun == false) break;
-                            Thread.Sleep(100);
-                            App.Current.Dispatcher.Invoke(() =>
-                            {
-                                ItemSourceListData.Clear();
-                                OverlayDetections.Clear();
-                            });
-                            if (token.IsCancellationRequested) return;
-                            DetectOne(filePath, conf, iou, imgSz, token);
-                        }
+                            TotalTimeMessage = $"Total time ~ {ms:0} ms - {1f / ms * 1000:F0}fps";
+                        });
                     }
                 }, token);
             }
         }
-
 
         void CreateSession()
         {
@@ -177,7 +273,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             float ratio = letter.Item2;
             int padW = letter.Item3, padH = letter.Item4;
 
-            //Cv2.CvtColor(canvas, canvas, ColorConversionCodes.BGR2RGB);
             var inputTensor = ToTensorUnsafeBGR(canvas);
 
             string inputName = _session.InputMetadata.Keys.First();
@@ -193,7 +288,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 var t0 = DateTime.Now;
                 results = _session.Run(inputs);
                 var ms = (DateTime.Now - t0).TotalMilliseconds;
-                StatusMessage = $"Inference time ~ {ms:0} ms";
+                StatusMessage = $"Inference time ~ {ms:0} ms - {1f / ms * 1000:F0}";
             }
             catch (Exception ex)
             {
@@ -283,6 +378,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                         ClassId = bestClass,
                         Score = bestScore,
                         ClassName = _names != null ? _names[bestClass] : "",
+                        ColorBox = (bestClass == 0) ? Brushes.Cyan : (bestClass == 1) ? Brushes.DodgerBlue : Brushes.Red
                     });
                 }
 
@@ -290,22 +386,21 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
+                    ItemSourceListData.Clear();
+                    OverlayDetections.Clear();
                     try
                     {
                         DisplayedImageSource = new BitmapImage(new Uri(imagePath));
                         finalDets.ForEach(d =>
                         {
-                            ItemSourceListData.Add(new DetectionMessage(d.ToString(),
-                                (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red
-                                ));
-
-                            OverlayDetections.Add(new GraphicItem()
+                            ItemSourceListData.Add(new DetectionMessage(d.ToString(), d.ColorBox));
+                            OverlayDetections.Add(new RectangleItem()
                             {
                                 X = d.X1,
                                 Y = d.Y1,
                                 Width = Math.Abs(d.X1 - d.X2),
                                 Height = Math.Abs(d.Y1 - d.Y2),
-                                Color = (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red,
+                                Color = d.ColorBox,
                                 StrokeThickness = 3,
                                 Fill = Brushes.Transparent,
                             });
@@ -314,7 +409,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                             {
                                 X = d.X1,
                                 Y = d.Y1 - 20,
-                                Color = (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red,
+                                Color = d.ColorBox,
                                 Label = $" {d.ClassName} ({d.Score:P1})"
                             });
                         });
@@ -323,17 +418,25 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                     {
                     }
 
-                    DrawOverlayAction?.Invoke(finalDets, origW, origH);
                 });
                 ResultMessage = $"Detections: {finalDets.Count} ";
             }
         }
+
         void DetectOne(Mat _mat, float confThres, float iouThres, int imgSize, CancellationToken token)
         {
             if (token.IsCancellationRequested) return;
-            sw.Restart();
 
-            Mat src = _mat.Clone();
+            sw.Restart();
+            Mat src;
+            if (_mat.Channels() == 1)
+            {
+                src = _mat.CvtColor(ColorConversionCodes.GRAY2BGR);
+            }
+            else
+            {
+                src = _mat.Clone();
+            }
 
             if (src.Empty()) { StatusMessage = "Không đọc được ảnh."; return; }
             int origW = src.Width, origH = src.Height;
@@ -358,7 +461,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                 var t0 = DateTime.Now;
                 results = _session.Run(inputs);
                 var ms = (DateTime.Now - t0).TotalMilliseconds;
-                StatusMessage = $"Inference time ~ {ms:0} ms";
+                StatusMessage = $"Inference time ~ {ms:0} ms - {1f / ms * 1000:F0}fps";
             }
             catch (Exception ex)
             {
@@ -448,6 +551,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
                         ClassId = bestClass,
                         Score = bestScore,
                         ClassName = _names != null ? _names[bestClass] : "",
+                        ColorBox = (bestClass == 0) ? Brushes.Cyan : (bestClass == 1) ? Brushes.DodgerBlue : Brushes.Red
                     });
                 }
 
@@ -455,27 +559,50 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
+                    ItemSourceListData.Clear();
+                    OverlayDetections.Clear();
                     try
                     {
-                        DisplayedImageSource = _mat.ToWriteableBitmap();
                         finalDets.ForEach(d =>
                         {
-                            ItemSourceListData.Add(new DetectionMessage(d.ToString(),
-                                (d.ClassId == 0) ? Brushes.Cyan : (d.ClassId == 1) ? Brushes.DodgerBlue : Brushes.Red
-                                ));
+                            ItemSourceListData.Add(new DetectionMessage(d.ToString(), d.ColorBox));
+                            OverlayDetections.Add(new RectangleItem()
+                            {
+                                X = d.X1,
+                                Y = d.Y1,
+                                Width = Math.Abs(d.X1 - d.X2),
+                                Height = Math.Abs(d.Y1 - d.Y2),
+                                Color = d.ColorBox,
+                                StrokeThickness = 3,
+                                Fill = Brushes.Transparent,
+                            });
+
+                            OverlayDetections.Add(new TextBlockItem()
+                            {
+                                X = d.X1,
+                                Y = d.Y1 - 20,
+                                Color = d.ColorBox,
+                                Label = $" {d.ClassName} ({d.Score:P1})"
+                            });
                         });
                     }
                     catch (Exception)
                     {
                     }
 
-                    DrawOverlayAction?.Invoke(finalDets, origW, origH);
                 });
                 ResultMessage = $"Detections: {finalDets.Count} ";
             }
         }
 
-        private  float Clamp(float v, float min, float max)
+        public void OnDispose()
+        {
+            if (_cam != null)
+            {
+                _cam.Dispose();
+            }
+        }
+        private float Clamp(float v, float min, float max)
             => v < min ? min : (v > max ? max : v);
 
         private unsafe DenseTensor<float> ToTensorUnsafeBGR(Mat bgr)
@@ -519,7 +646,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return new DenseTensor<float>(_tensorBuf, new[] { 1, 3, h, w });
         }
 
-        private  Tuple<Mat, float, int, int> Letterbox(Mat src, int targetW, int targetH)
+        private Tuple<Mat, float, int, int> Letterbox(Mat src, int targetW, int targetH)
         {
             int w = src.Width, h = src.Height;
             float r = Math.Min((float)targetW / w, (float)targetH / h);
@@ -538,7 +665,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return Tuple.Create(outImg, r, padW, padH);
         }
 
-        private  float IoU(Detections a, Detections b)
+        private float IoU(Detections a, Detections b)
         {
             float x1 = Math.Max(a.X1, b.X1);
             float y1 = Math.Max(a.Y1, b.Y1);
@@ -551,7 +678,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.ViewModels
             return inter / union;
         }
 
-        private  List<Detections> NMS(List<Detections> dets, float iouThres)
+        private List<Detections> NMS(List<Detections> dets, float iouThres)
         {
             var res = new List<Detections>();
             var sorted = dets.OrderByDescending(d => d.Score).ToList();
