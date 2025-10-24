@@ -12,10 +12,7 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Models
         public Brush Color { get; set; }
         public Brush Fill { get; set; }
         public string Label { get; set; }
-
     }
-    public class TextBlockItem : GraphicItem { }
-    public class RectangleItem : GraphicItem { }
   
 
 }

@@ -98,6 +98,8 @@
     <Compile Include="Models\Detections.cs" />
     <Compile Include="Models\GraphicItem.cs" />
     <Compile Include="Models\IGraphicItem.cs" />
+    <Compile Include="Models\RectangleItem.cs" />
+    <Compile Include="Models\TextBlockItem.cs" />
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\SubMainViewModel.cs" />

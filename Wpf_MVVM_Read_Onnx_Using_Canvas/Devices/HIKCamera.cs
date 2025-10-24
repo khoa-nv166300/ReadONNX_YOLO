@@ -37,7 +37,8 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Devices
                 var dev = (MyCamera.MV_CC_DEVICE_INFO)
                     Marshal.PtrToStructure(list.pDeviceInfo[i], typeof(MyCamera.MV_CC_DEVICE_INFO));
                 string name = $"{i + 1}: {((MyCamera.MV_GIGE_DEVICE_INFO_EX)MyCamera.ByteToStruct(dev.SpecialInfo.stGigEInfo, typeof(MyCamera.MV_GIGE_DEVICE_INFO_EX))).chModelName}";
-                CameraList.Add(new CameraInfo { Index = i, Name = string.IsNullOrWhiteSpace(name) ? $"Cam{i + 1}" : name });
+                string serialNumber = $"{((MyCamera.MV_GIGE_DEVICE_INFO_EX)MyCamera.ByteToStruct(dev.SpecialInfo.stGigEInfo, typeof(MyCamera.MV_GIGE_DEVICE_INFO_EX))).chSerialNumber}";
+                CameraList.Add(new CameraInfo { Index = i, Name = string.IsNullOrWhiteSpace(name) ? $"Cam{i + 1}" : $"{name} - {serialNumber}" });
             }
             return true;
         }
@@ -93,20 +94,16 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Devices
         {
             try
             {
-                // Xác định PixelFormat
                 var pt = (MyCamera.MvGvspPixelType)frameInfo.enPixelType;
 
-                // Chuẩn bị WriteableBitmap cho WPF
                 BitmapSource bmpSrc;
 
                 if (pt == MyCamera.MvGvspPixelType.PixelType_Gvsp_BGR8_Packed)
                 {
-                    // BGR24 → WPF dùng PixelFormats.Bgr24
                     int width = (int)frameInfo.nWidth;
                     int height = (int)frameInfo.nHeight;
                     int stride = width * 3;
 
-                    // Copy unmanaged -> managed
                     byte[] buffer = new byte[stride * height];
                     Marshal.Copy(pData, buffer, 0, buffer.Length);
 
@@ -120,7 +117,6 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Devices
                 }
                 else if (pt == MyCamera.MvGvspPixelType.PixelType_Gvsp_Mono8)
                 {
-                    // MONO8 → Gray8
                     int width = (int)frameInfo.nWidth;
                     int height = (int)frameInfo.nHeight;
                     int stride = width;
@@ -139,14 +135,12 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Devices
                 }
                 else
                 {
-                    // Các định dạng Bayer/khác → chuyển về BGR8 bằng ConvertPixelType
                     bmpSrc = ConvertToBgr24(pData, frameInfo);
                     mat = ConvertToBGR8(pData, frameInfo);
                     Console.WriteLine("On Frame BGR8");
 
                 }
 
-                // Đẩy về UI: WPF yêu cầu marshal lên UI thread
                 if (bmpSrc != null)
                 {
                     bmpSrc.Freeze();
@@ -163,11 +157,10 @@ namespace Wpf_MVVM_Read_Onnx_Using_Canvas.Devices
         }
         private BitmapSource ConvertToBgr24(IntPtr pData, MyCamera.MV_FRAME_OUT_INFO_EX info)
         {
-            // Dùng MV_CC_ConvertPixelType chuyển về BGR8
             int w = (int)info.nWidth;
             int h = (int)info.nHeight;
 
-            var dstSize = w * h * 3; // BGR24
+            var dstSize = w * h * 3;
             IntPtr dstBuf = Marshal.AllocHGlobal(dstSize);
 
             try
