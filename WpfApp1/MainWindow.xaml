@@ -5,41 +5,182 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp1"
         mc:Ignorable="d"
-        Title="YOLO ONNX WPF" Height="720" Width="1080" Background="#1e1e1e">
-    <Grid Margin="10">
+        Title="YOLO ONNX WPF" Height="800" Width="1200" Background="#1e1e1e">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="3*"/>
+                        <RowDefinition Height="5*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="2 2 2 1" CornerRadius="3">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Top" >
+                                <Label Content="Cấu hình Camera" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
 
-        <!-- Toolbar -->
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="BtnLoadOnnx" Content="Load ONNX" Width="110" Margin="0,0,8,0" Click="BtnLoadOnnx_Click"/>
-            <Button x:Name="BtnLoadNames" Content="Load classes.txt" Width="130" Margin="0,0,8,0" Click="BtnLoadNames_Click"/>
-            <Button x:Name="BtnOpenImage" Content="Open Image" Width="110" Margin="0,0,8,0" Click="BtnOpenImage_Click"/>
-            <Button x:Name="BtnDetect" Content="Detect" Width="100" Click="BtnDetect_Click"/>
-            <Button x:Name="BtnRun" Content="Run" Width="100" Margin="8 0 0 0" />
-            <CheckBox x:Name="ChkGpu" Content="GPU" Foreground="White" Margin="16,0,0,0"/>
-            <TextBlock Text="conf:" Foreground="White" Margin="16,0,0,0" VerticalAlignment="Center"/>
-            <TextBox x:Name="TbConf" Text="0.25" Width="60" Margin="4,0,0,0"/>
-            <TextBlock Text="iou:" Foreground="White" Margin="16,0,0,0" VerticalAlignment="Center"/>
-            <TextBox x:Name="TbIou" Text="0.45" Width="60" Margin="4,0,0,0"/>
-            <TextBlock Text="imgsz:" Foreground="White" Margin="16,0,0,0" VerticalAlignment="Center"/>
-            <TextBox x:Name="TbImg" Text="640" Width="60" Margin="4,0,0,0"/>
-        </StackPanel>
+                                <ComboBox ItemsSource="{Binding CameraList}" Style="{DynamicResource RoundedComboBox}" SelectedItem="{Binding SelectedCamera}" DisplayMemberPath="Name" Height="28"/>
+                                <UniformGrid Columns="2">
+                                    <Button Margin="3" Style="{StaticResource BaseButtonStyle}"    Content="Quét thiết bị" Command="{Binding EnumCmd}"  />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Kết nối"       Command="{Binding OpenCmd}"  />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Bắt đầu"       Command="{Binding StartCmd}" />
+                                    <Button Margin="3" Style="{StaticResource PrimaryButtonStyle}" Content="Dừng"          Command="{Binding StopCmd}"  />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2" CornerRadius="3">
+                            <StackPanel Orientation="Vertical" VerticalAlignment="Top">
+                               
+                                <UniformGrid Columns="2">
+                                    <UniformGrid Columns="1">
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Load ONNX"  Command="{Binding LoadOnnxCommand}"  />
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Load Name"  Command="{Binding LoadNamesCommand}" />
+                                        <Button Style="{StaticResource BaseButtonStyle}" Margin = "3" Content="Open Image" Command="{Binding OpenImageCommand}" />
+                                    </UniformGrid>
+                                    <UniformGrid Columns="1">
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Detect Image"  Command="{Binding DetectCommand}"       />
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Detect Camera" Command="{Binding DetectCameraCommand}" />
+                                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin = "3" Content="Run"           Command="{Binding RunCommand}"          />
+                                    </UniformGrid>
+                                </UniformGrid>
 
-        <!-- Viewer -->
-        <Grid Grid.Row="1" Background="#2b2b2b">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Image x:Name="ImgView"/>
-                    <Canvas x:Name="Overlay" IsHitTestVisible="False"/>
+                                <CheckBox Content="GPU" Foreground="White" Margin="0,5,0,0" IsChecked="{Binding IsGpuEnabled}" VerticalAlignment="Center"/>
+
+                                <StackPanel Orientation="Vertical" Margin="0,5,0,0" VerticalAlignment="Center">
+                                    <UniformGrid Columns="2">
+                                        <UniformGrid Columns="1">
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="Confidence:"/>
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="IoU:"       />
+                                            <TextBlock Foreground="White" Margin="5,5,0,0" VerticalAlignment="Center" Text="Image size:"/>
+                                        </UniformGrid>
+                                        <UniformGrid Columns="1">
+                                            <TextBox Margin="0,5,0,0" Width="70" Text="{Binding ConfidenceThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Margin="0,5,0,0" Width="70" Text="{Binding IouThreshold, UpdateSourceTrigger=PropertyChanged}"        />
+                                            <TextBox Margin="0,5,0,0" Width="70" Text="{Binding ImageSize, UpdateSourceTrigger=PropertyChanged}"           />
+                                        </UniformGrid>
+                                    </UniformGrid>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="2">
+                    </Grid>
                 </Grid>
-            </ScrollViewer>
-        </Grid>
+                <Grid Grid.Column="1">
+                    <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="2 2 1 2">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Label Content="TRACKING DETECT YOLO" FontSize="30" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"
+                               HorizontalContentAlignment="Center"
+                               VerticalContentAlignment="Center"
+                               />
+                            </Grid>
+                            <Grid Grid.Row="1">
+                                <Viewbox Margin="2">
+                                    <Grid>
+                                        <Image Source="{Binding DisplayedImageSource}"/>
+                                        <ItemsControl ItemsSource="{Binding OverlayDetections}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas IsHitTestVisible="False"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style>
+                                                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Label}" 
+                                                Foreground="{Binding Color}" 
+                                                Background="Transparent"
+                                                FontWeight="SemiBold"/>
 
-        <!-- Status -->
-        <TextBlock Grid.Row="2" x:Name="TxtStatus" Foreground="LightGray" />
+                                                        <Rectangle Width="{Binding Width}" 
+                                                Height="{Binding Height}" 
+                                                Stroke="{Binding Color}" 
+                                                StrokeThickness="{Binding StrokeThickness}"
+                                                Fill="Transparent"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Viewbox>
+                            </Grid>
+                            <Grid Grid.Row="2">
+                                <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="2 2 2 2" CornerRadius="3">
+                                    <StackPanel Orientation="Vertical">
+
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding StatusMessage}" />
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding ResultMessage}" />
+                                        <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding TotalTimeMessage}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+                <Grid Grid.Column="2">
+                    <Border CornerRadius="5" BorderBrush="Gray" BorderThickness="1" Margin="1 2 2 2">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Label Content="List Result" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,10"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                />
+                            </Grid>
+                            <Grid Grid.Row="1">
+
+                                <ListBox ItemsSource="{Binding ItemSourceListData}" Background="Transparent" Style="{StaticResource RoundedListBox}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                                     ScrollViewer.VerticalScrollBarVisibility="Hidden">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0">
+                     <Run FontSize="10" 
+                          FontWeight="SemiBold" 
+                          Foreground="{DynamicResource ItemListboxBrush}" 
+                          Text="{Binding DateTime, StringFormat='{}{0:[yyyy-MM-dd HH:mm:ss.fff]}'}">
+                     </Run>
+                     <LineBreak/>
+                     <Run Text="{Binding Message}" 
+                          Foreground="{Binding Color}"
+                          FontSize="14">
+                     </Run>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                        </Grid>
+                </Grid>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
+    </Grid>
+
 </Window>

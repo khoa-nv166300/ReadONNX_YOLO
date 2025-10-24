@@ -91,6 +91,16 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Devices\HikCameraService.cs" />
+    <Compile Include="Devices\ICameraService.cs" />
+    <Compile Include="Devices\MVCamera.cs" />
+    <Compile Include="Models\DetectionMessage.cs" />
+    <Compile Include="Models\Detections.cs" />
+    <Compile Include="Models\GraphicItem.cs" />
+    <Compile Include="Models\IGraphicItem.cs" />
+    <Compile Include="ViewModels\BaseViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\SubMainViewModel.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -103,9 +113,12 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Styles\ResourceStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="OnnxInferanceSample.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>

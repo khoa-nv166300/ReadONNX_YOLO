@@ -7,9 +7,6 @@
         mc:Ignorable="d"
         Title="YOLO ONNX WPF" Height="720" Width="1080" Background="#1e1e1e">
 
-    <Window.Resources>
-
-    </Window.Resources>
 
     <Grid Margin="15">
         <Grid.RowDefinitions>
@@ -111,7 +108,7 @@
                 </Border>
             </Grid>
         </Grid>
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="2" Background="{StaticResource MainBrush}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding StatusMessage}" />
                 <TextBlock Grid.Row="2" Foreground="LightGray" Padding="5,0" Text="{Binding ResultMessage}" />
